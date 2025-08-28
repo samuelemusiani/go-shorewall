@@ -13,7 +13,6 @@ const (
 	interfacesFile      = shorewallConfigPath + "/interfaces"
 	policyFile          = shorewallConfigPath + "/policy"
 	rulesFile           = shorewallConfigPath + "/rules"
-	hostsFile           = shorewallConfigPath + "/hosts"
 	snatFile            = shorewallConfigPath + "/snat"
 )
 

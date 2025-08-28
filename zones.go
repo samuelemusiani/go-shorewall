@@ -16,6 +16,7 @@ type Zone struct {
 
 var (
 	ErrZoneAlreadyExists = errors.New("zone already exists")
+	ErrZoneNotFound      = errors.New("zone not found")
 )
 
 func parseZones(data []byte) (zones []Zone) {
@@ -87,18 +88,17 @@ func RemoveZone(zoneName string) error {
 		return z.Name == zoneName
 	})
 	if index == -1 {
-		return fmt.Errorf("zone %s not found", zoneName)
+		return ErrZoneNotFound
 	}
 
 	zones = append(zones[:index], zones[index+1:]...)
 
 	var buff bytes.Buffer
 	for _, z := range zones {
-		fmt.Fprintf(&buff, "%s\t%s\n", z.Name, z.Type)
+		buff.WriteString(z.Name + "\t" + z.Type + "\n")
 	}
 
-	err = os.WriteFile(zonesFile, buff.Bytes(), 0644)
-	if err != nil {
+	if err = os.WriteFile(zonesFile, buff.Bytes(), 0644); err != nil {
 		return err
 	}
 

@@ -88,7 +88,7 @@ func RemoveInterfaceByZone(zone string) error {
 	interfaces = append(interfaces[:index], interfaces[index+1:]...)
 
 	var buffer bytes.Buffer
-	for _, z := range updatedInterfaces {
+	for _, z := range interfaces {
 		buffer.WriteString(z.Zone + "\t" + z.Name + "\n")
 	}
 

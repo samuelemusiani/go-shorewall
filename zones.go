@@ -76,3 +76,31 @@ func AddZone(zone Zone) error {
 
 	return nil
 }
+
+func RemoveZone(zoneName string) error {
+	zones, err := GetZones()
+	if err != nil {
+		return err
+	}
+
+	index := slices.IndexFunc(zones, func(z Zone) bool {
+		return z.Name == zoneName
+	})
+	if index == -1 {
+		return fmt.Errorf("zone %s not found", zoneName)
+	}
+
+	zones = append(zones[:index], zones[index+1:]...)
+
+	var buff bytes.Buffer
+	for _, z := range zones {
+		fmt.Fprintf(&buff, "%s\t%s\n", z.Name, z.Type)
+	}
+
+	err = os.WriteFile(zonesFile, buff.Bytes(), 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

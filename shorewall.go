@@ -35,3 +35,12 @@ func GetVersion() (string, error) {
 
 	return stdout, nil
 }
+
+func Reload() error {
+	_, stderr, err := executeCommand("/usr/sbin/shorewall", "reload")
+	if err != nil {
+		err = errors.Join(fmt.Errorf("failed to reload Shorewall: %w", err), errors.New(stderr))
+		return err
+	}
+	return nil
+}

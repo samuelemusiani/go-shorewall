@@ -7,6 +7,16 @@ import (
 	"os/exec"
 )
 
+const (
+	shorewallConfigPath = "/etc/shorewall"
+	zonesFile           = shorewallConfigPath + "/zones"
+	interfacesFile      = shorewallConfigPath + "/interfaces"
+	policyFile          = shorewallConfigPath + "/policy"
+	rulesFile           = shorewallConfigPath + "/rules"
+	hostsFile           = shorewallConfigPath + "/hosts"
+	snatFile            = shorewallConfigPath + "/snat"
+)
+
 func executeCommand(command string, args ...string) (string, string, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

@@ -68,6 +68,10 @@ func AddRule(rule Rule) error {
 		return err
 	}
 
+	if rule.Dport == "" && rule.Sport != "" {
+		rule.Dport = "-"
+	}
+
 	for _, r := range rules {
 		if r.Action == rule.Action && r.Source == rule.Source && r.Destination == rule.Destination && r.Protocol == rule.Protocol && r.Dport == rule.Dport && r.Sport == rule.Sport {
 			return ErrRuleAlreadyExists
@@ -95,6 +99,10 @@ func RemoveRule(rule Rule) error {
 		return err
 	}
 
+	if rule.Dport == "" && rule.Sport != "" {
+		rule.Dport = "-"
+	}
+
 	index := slices.IndexFunc(rules, func(r Rule) bool {
 		return r.Action == rule.Action && r.Source == rule.Source && r.Destination == rule.Destination && r.Protocol == rule.Protocol && r.Dport == rule.Dport && r.Sport == rule.Sport
 	})
@@ -102,7 +110,7 @@ func RemoveRule(rule Rule) error {
 		return ErrRuleNotFound
 	}
 
-	rules = append(rules[:index], rules[index+1:]...)
+	rules = slices.Delete(rules, index, index+1)
 
 	var buff bytes.Buffer
 	for _, r := range rules {
@@ -115,4 +123,3 @@ func RemoveRule(rule Rule) error {
 
 	return nil
 }
-

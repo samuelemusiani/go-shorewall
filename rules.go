@@ -117,6 +117,10 @@ func RemoveRule(rule Rule) error {
 		rule.Dport = "-"
 	}
 
+	if rule.Sport == "" && rule.Origdest != "" {
+		rule.Sport = "-"
+	}
+
 	index := slices.IndexFunc(rules, func(r Rule) bool {
 		return r.Action == rule.Action &&
 			r.Source == rule.Source &&

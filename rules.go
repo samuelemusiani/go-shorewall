@@ -15,6 +15,7 @@ type Rule struct {
 	Protocol    string
 	Dport       string
 	Sport       string
+	Origdest    string
 }
 
 var (
@@ -48,6 +49,9 @@ func parseRules(data []byte) (rules []Rule) {
 		if len(parts) > 5 {
 			rule.Sport = string(parts[5])
 		}
+		if len(parts) > 6 {
+			rule.Origdest = string(parts[6])
+		}
 		rules = append(rules, rule)
 	}
 	return
@@ -72,8 +76,18 @@ func AddRule(rule Rule) error {
 		rule.Dport = "-"
 	}
 
+	if rule.Sport == "" && rule.Origdest != "" {
+		rule.Sport = "-"
+	}
+
 	for _, r := range rules {
-		if r.Action == rule.Action && r.Source == rule.Source && r.Destination == rule.Destination && r.Protocol == rule.Protocol && r.Dport == rule.Dport && r.Sport == rule.Sport {
+		if r.Action == rule.Action &&
+			r.Source == rule.Source &&
+			r.Destination == rule.Destination &&
+			r.Protocol == rule.Protocol &&
+			r.Dport == rule.Dport &&
+			r.Sport == rule.Sport &&
+			r.Origdest == rule.Origdest {
 			return ErrRuleAlreadyExists
 		}
 	}
@@ -84,7 +98,7 @@ func AddRule(rule Rule) error {
 	}
 	defer f.Close()
 
-	line := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\n", rule.Action, rule.Source, rule.Destination, rule.Protocol, rule.Dport, rule.Sport)
+	line := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\n", rule.Action, rule.Source, rule.Destination, rule.Protocol, rule.Dport, rule.Sport, rule.Origdest)
 
 	if _, err := f.WriteString(line); err != nil {
 		return err
@@ -104,7 +118,13 @@ func RemoveRule(rule Rule) error {
 	}
 
 	index := slices.IndexFunc(rules, func(r Rule) bool {
-		return r.Action == rule.Action && r.Source == rule.Source && r.Destination == rule.Destination && r.Protocol == rule.Protocol && r.Dport == rule.Dport && r.Sport == rule.Sport
+		return r.Action == rule.Action &&
+			r.Source == rule.Source &&
+			r.Destination == rule.Destination &&
+			r.Protocol == rule.Protocol &&
+			r.Dport == rule.Dport &&
+			r.Sport == rule.Sport &&
+			r.Origdest == rule.Origdest
 	})
 	if index == -1 {
 		return ErrRuleNotFound
@@ -114,7 +134,7 @@ func RemoveRule(rule Rule) error {
 
 	var buff bytes.Buffer
 	for _, r := range rules {
-		line := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\n", r.Action, r.Source, r.Destination, r.Protocol, r.Dport, r.Sport)
+		line := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.Action, r.Source, r.Destination, r.Protocol, r.Dport, r.Sport, r.Origdest)
 		buff.WriteString(line)
 	}
 	if err := os.WriteFile(rulesFile, buff.Bytes(), 0644); err != nil {

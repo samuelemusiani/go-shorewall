@@ -3,8 +3,15 @@ package goshorewall
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"slices"
+	"strings"
+)
+
+var (
+	ErrInterfaceAlreadyExists = errors.New("interface already exists")
+	ErrInterfaceNotFound      = errors.New("interface not found")
 )
 
 type Interface struct {
@@ -12,14 +19,82 @@ type Interface struct {
 	Name string
 }
 
-var (
-	ErrInterfaceAlreadyExists = errors.New("interface already exists")
-	ErrInterfaceNotFound      = errors.New("interface not found")
-)
+func (i Interface) Compare(other Interface) int {
+	if cmp := strings.Compare(i.Zone, other.Zone); cmp != 0 {
+		return cmp
+	}
+	// This should not be needed, as interface names are unique within zones
+	return strings.Compare(i.Name, other.Name)
+}
+
+func (i Interface) Equals(other Interface) bool {
+	return i.Zone == other.Zone && i.Name == other.Name
+}
+
+func (i Interface) Format() string {
+	return fmt.Sprintf("%s\t%s", i.Zone, i.Name)
+}
+
+func GetInterfaces() ([]Interface, error) {
+	buff, err := os.ReadFile(interfacesFile)
+	if err != nil {
+		return nil, err
+	}
+	return getInterfacesBuff(buff)
+}
+
+func AddInterface(iface Interface) error {
+	return readWriteFile(interfacesFile, addInterfaceBuff, iface)
+}
+
+func RemoveInterfaceByZone(zone string) error {
+	return readWriteFile(interfacesFile, removeInterfaceByZoneBuff, zone)
+}
+
+func getInterfacesBuff(buff []byte) ([]Interface, error) {
+	return parseInterfaces(buff), nil
+}
+
+func addInterfaceBuff(buff []byte, iface Interface) ([]byte, error) {
+	interfaces, err := getInterfacesBuff(buff)
+	if err != nil {
+		return nil, err
+	}
+
+	if slices.ContainsFunc(interfaces, func(z Interface) bool {
+		return z.Name == iface.Name
+	}) {
+		return nil, ErrInterfaceAlreadyExists
+	}
+
+	return fmt.Appendf(buff, "%s\n", iface.Format()), nil
+}
+
+func removeInterfaceByZoneBuff(buff []byte, zone string) ([]byte, error) {
+	interfaces, err := getInterfacesBuff(buff)
+	if err != nil {
+		return nil, err
+	}
+
+	index := slices.IndexFunc(interfaces, func(z Interface) bool {
+		return z.Zone == zone
+	})
+	if index == -1 {
+		return nil, ErrInterfaceNotFound
+	}
+
+	interfaces = slices.Delete(interfaces, index, index+1)
+
+	var b bytes.Buffer
+	for _, z := range interfaces {
+		b.WriteString(fmt.Sprintf("%s\n", z.Format()))
+	}
+
+	return b.Bytes(), nil
+}
 
 func parseInterfaces(data []byte) (interfaces []Interface) {
-	iter := bytes.Lines(data)
-	for z := range iter {
+	for z := range bytes.Lines(data) {
 		z = bytes.TrimSpace(z)
 		if len(z) == 0 || z[0] == '#' {
 			continue
@@ -36,65 +111,4 @@ func parseInterfaces(data []byte) (interfaces []Interface) {
 		interfaces = append(interfaces, iface)
 	}
 	return
-}
-
-func GetInterfaces() ([]Interface, error) {
-	buff, err := os.ReadFile(interfacesFile)
-	if err != nil {
-		return nil, err
-	}
-
-	return parseInterfaces(buff), nil
-}
-
-func AddInterface(iface Interface) error {
-	interfaces, err := GetInterfaces()
-	if err != nil {
-		return err
-	}
-
-	for _, z := range interfaces {
-		if z.Name == iface.Name {
-			return ErrInterfaceAlreadyExists
-		}
-	}
-
-	f, err := os.OpenFile(interfacesFile, os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err = f.WriteString(iface.Zone + "\t" + iface.Name + "\n"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func RemoveInterfaceByZone(zone string) error {
-	interfaces, err := GetInterfaces()
-	if err != nil {
-		return err
-	}
-
-	index := slices.IndexFunc(interfaces, func(z Interface) bool {
-		return z.Zone == zone
-	})
-	if index == -1 {
-		return ErrInterfaceNotFound
-	}
-
-	interfaces = append(interfaces[:index], interfaces[index+1:]...)
-
-	var buffer bytes.Buffer
-	for _, z := range interfaces {
-		buffer.WriteString(z.Zone + "\t" + z.Name + "\n")
-	}
-
-	if err = os.WriteFile(interfacesFile, buffer.Bytes(), 0600); err != nil {
-		return err
-	}
-
-	return nil
 }

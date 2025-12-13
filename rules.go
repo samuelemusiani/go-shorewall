@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+var (
+	ErrRuleAlreadyExists = errors.New("rule already exists")
+	ErrRuleNotFound      = errors.New("rule not found")
+)
+
 type Rule struct {
 	Action      string
 	Source      string
@@ -19,10 +24,112 @@ type Rule struct {
 	Origdest    string
 }
 
-var (
-	ErrRuleAlreadyExists = errors.New("rule already exists")
-	ErrRuleNotFound      = errors.New("rule not found")
-)
+func (r Rule) Compare(other Rule) int {
+	r = r.fillEmpty()
+	other = other.fillEmpty()
+	if cmp := strings.Compare(r.Action, other.Action); cmp != 0 {
+		return cmp
+	}
+	if cmp := strings.Compare(r.Source, other.Source); cmp != 0 {
+		return cmp
+	}
+	if cmp := strings.Compare(r.Destination, other.Destination); cmp != 0 {
+		return cmp
+	}
+	if cmp := strings.Compare(r.Protocol, other.Protocol); cmp != 0 {
+		return cmp
+	}
+	if cmp := strings.Compare(r.Dport, other.Dport); cmp != 0 {
+		return cmp
+	}
+	if cmp := strings.Compare(r.Sport, other.Sport); cmp != 0 {
+		return cmp
+	}
+	return strings.Compare(r.Origdest, other.Origdest)
+}
+
+func (r Rule) Equals(other Rule) bool {
+	return r.Compare(other) == 0
+}
+
+func (r Rule) Format() string {
+	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s", r.Action, r.Source, r.Destination, r.Protocol, r.Dport, r.Sport, r.Origdest)
+}
+
+func GetRules() ([]Rule, error) {
+	buff, err := os.ReadFile(rulesFile)
+	if err != nil {
+		return nil, err
+	}
+	return getRulesBuff(buff)
+}
+
+func AddRule(rule Rule) error {
+	return readWriteFile(rulesFile, addRuleBuff, rule)
+}
+
+func RemoveRule(rule Rule) error {
+	return readWriteFile(rulesFile, removeRuleBuff, rule)
+}
+
+func getRulesBuff(buff []byte) ([]Rule, error) {
+	return parseRules(buff), nil
+}
+
+func addRuleBuff(buff []byte, rule Rule) ([]byte, error) {
+	rules, err := getRulesBuff(buff)
+	if err != nil {
+		return nil, err
+	}
+
+	rule = rule.fillEmpty()
+
+	if slices.ContainsFunc(rules, func(r Rule) bool {
+		return r.Equals(rule)
+	}) {
+		return nil, ErrRuleAlreadyExists
+	}
+
+	return fmt.Appendf(buff, "%s\n", rule.Format()), nil
+}
+
+func removeRuleBuff(buff []byte, rule Rule) ([]byte, error) {
+	rules, err := getRulesBuff(buff)
+	if err != nil {
+		return nil, err
+	}
+
+	rule = rule.fillEmpty()
+
+	index := slices.IndexFunc(rules, func(r Rule) bool {
+		return r.Equals(rule)
+	})
+	if index == -1 {
+		return nil, ErrRuleNotFound
+	}
+
+	rules = slices.Delete(rules, index, index+1)
+
+	var b bytes.Buffer
+	for _, r := range rules {
+		b.WriteString(fmt.Sprintf("%s\n", r.Format()))
+	}
+
+	return b.Bytes(), nil
+}
+
+// fillEmpty fills empty fields with "-" where necessary
+func (r Rule) fillEmpty() Rule {
+	if r.Dport == "" && r.Sport != "" {
+		r.Dport = "-"
+	}
+
+	if r.Sport == "" && r.Origdest != "" {
+		r.Sport = "-"
+	}
+
+	return r
+}
 
 func parseRules(data []byte) (rules []Rule) {
 	iter := bytes.Lines(data)
@@ -56,116 +163,4 @@ func parseRules(data []byte) (rules []Rule) {
 		rules = append(rules, rule)
 	}
 	return
-}
-
-func GetRules() ([]Rule, error) {
-	buff, err := os.ReadFile(rulesFile)
-	if err != nil {
-		return nil, err
-	}
-
-	return parseRules(buff), nil
-}
-
-func AddRule(rule Rule) error {
-	rules, err := GetRules()
-	if err != nil {
-		return err
-	}
-
-	rule = rule.fillEmpty()
-
-	for _, r := range rules {
-		if r.Equals(rule) {
-			return ErrRuleAlreadyExists
-		}
-	}
-
-	f, err := os.OpenFile(rulesFile, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	line := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\n", rule.Action, rule.Source, rule.Destination, rule.Protocol, rule.Dport, rule.Sport, rule.Origdest)
-
-	if _, err := f.WriteString(line); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func RemoveRule(rule Rule) error {
-	rules, err := GetRules()
-	if err != nil {
-		return err
-	}
-
-	rule = rule.fillEmpty()
-
-	index := slices.IndexFunc(rules, func(r Rule) bool {
-		return r.Equals(rule)
-	})
-	if index == -1 {
-		return ErrRuleNotFound
-	}
-
-	rules = slices.Delete(rules, index, index+1)
-
-	var buff bytes.Buffer
-	for _, r := range rules {
-		line := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.Action, r.Source, r.Destination, r.Protocol, r.Dport, r.Sport, r.Origdest)
-		buff.WriteString(line)
-	}
-	if err := os.WriteFile(rulesFile, buff.Bytes(), 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r Rule) Compare(other Rule) int {
-	r = r.fillEmpty()
-	other = other.fillEmpty()
-
-	if r.Action != other.Action {
-		return strings.Compare(r.Action, other.Action)
-	}
-	if r.Source != other.Source {
-		return strings.Compare(r.Source, other.Source)
-	}
-	if r.Destination != other.Destination {
-		return strings.Compare(r.Destination, other.Destination)
-	}
-	if r.Protocol != other.Protocol {
-		return strings.Compare(r.Protocol, other.Protocol)
-	}
-	if r.Dport != other.Dport {
-		return strings.Compare(r.Dport, other.Dport)
-	}
-	if r.Sport != other.Sport {
-		return strings.Compare(r.Sport, other.Sport)
-	}
-	if r.Origdest != other.Origdest {
-		return strings.Compare(r.Origdest, other.Origdest)
-	}
-	return 0
-}
-
-func (r Rule) Equals(other Rule) bool {
-	return r.Compare(other) == 0
-}
-
-// fillEmpty fills empty fields with "-" where necessary
-func (r Rule) fillEmpty() Rule {
-	if r.Dport == "" && r.Sport != "" {
-		r.Dport = "-"
-	}
-
-	if r.Sport == "" && r.Origdest != "" {
-		r.Sport = "-"
-	}
-
-	return r
 }

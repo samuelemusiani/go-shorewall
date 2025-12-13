@@ -6,6 +6,12 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
+)
+
+var (
+	ErrSnatAlreadyExists = errors.New("snat rule already exists")
+	ErrSnatNotFound      = errors.New("snat rule not found")
 )
 
 type Snat struct {
@@ -14,10 +20,81 @@ type Snat struct {
 	Destination string
 }
 
-var (
-	ErrSnatAlreadyExists = errors.New("snat rule already exists")
-	ErrSnatNotFound      = errors.New("snat rule not found")
-)
+func (s Snat) Compare(other Snat) int {
+	if cmp := strings.Compare(s.Action, other.Action); cmp != 0 {
+		return cmp
+	}
+	if cmp := strings.Compare(s.Source, other.Source); cmp != 0 {
+		return cmp
+	}
+	return strings.Compare(s.Destination, other.Destination)
+}
+
+func (s Snat) Equals(other Snat) bool {
+	return s.Action == other.Action && s.Source == other.Source && s.Destination == other.Destination
+}
+
+func (s Snat) Format() string {
+	return fmt.Sprintf("%s\t%s\t%s", s.Action, s.Source, s.Destination)
+}
+
+func GetSnats() ([]Snat, error) {
+	buff, err := os.ReadFile(snatFile)
+	if err != nil {
+		return nil, err
+	}
+	return getSnatsBuff(buff)
+}
+
+func AddSnat(snat Snat) error {
+	return readWriteFile(snatFile, addSnatBuff, snat)
+}
+
+func RemoveSnat(snat Snat) error {
+	return readWriteFile(snatFile, removeSnatBuff, snat)
+}
+
+func getSnatsBuff(buff []byte) ([]Snat, error) {
+	return parseSnats(buff), nil
+}
+
+func addSnatBuff(buff []byte, snat Snat) ([]byte, error) {
+	snats, err := getSnatsBuff(buff)
+	if err != nil {
+		return nil, err
+	}
+
+	if slices.ContainsFunc(snats, func(s Snat) bool {
+		return s.Equals(snat)
+	}) {
+		return nil, ErrSnatAlreadyExists
+	}
+
+	return fmt.Appendf(buff, "%s\n", snat.Format()), nil
+}
+
+func removeSnatBuff(buff []byte, snat Snat) ([]byte, error) {
+	snats, err := getSnatsBuff(buff)
+	if err != nil {
+		return nil, err
+	}
+
+	index := slices.IndexFunc(snats, func(s Snat) bool {
+		return s.Equals(snat)
+	})
+	if index == -1 {
+		return nil, ErrSnatNotFound
+	}
+
+	snats = slices.Delete(snats, index, index+1)
+
+	var b bytes.Buffer
+	for _, s := range snats {
+		line := fmt.Sprintf("%s\n", s.Format())
+		b.WriteString(line)
+	}
+	return b.Bytes(), nil
+}
 
 func parseSnats(data []byte) (snats []Snat) {
 	iter := bytes.Lines(data)
@@ -40,67 +117,3 @@ func parseSnats(data []byte) (snats []Snat) {
 	}
 	return
 }
-
-func GetSnats() ([]Snat, error) {
-	buff, err := os.ReadFile(snatFile)
-	if err != nil {
-		return nil, err
-	}
-
-	return parseSnats(buff), nil
-}
-
-func AddSnat(snat Snat) error {
-	snats, err := GetSnats()
-	if err != nil {
-		return err
-	}
-
-	for _, s := range snats {
-		if s.Action == snat.Action && s.Source == snat.Source && s.Destination == snat.Destination {
-			return ErrSnatAlreadyExists
-		}
-	}
-
-	f, err := os.OpenFile(snatFile, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	line := fmt.Sprintf("%s\t%s\t%s\n", snat.Action, snat.Source, snat.Destination)
-
-	if _, err := f.WriteString(line); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func RemoveSnat(snat Snat) error {
-	snats, err := GetSnats()
-	if err != nil {
-		return err
-	}
-
-	index := slices.IndexFunc(snats, func(s Snat) bool {
-		return s.Action == snat.Action && s.Source == snat.Source && s.Destination == snat.Destination
-	})
-	if index == -1 {
-		return ErrSnatNotFound
-	}
-
-	snats = append(snats[:index], snats[index+1:]...)
-
-	var buff bytes.Buffer
-	for _, s := range snats {
-		line := fmt.Sprintf("%s\t%s\t%s\n", s.Action, s.Source, s.Destination)
-		buff.WriteString(line)
-	}
-	if err := os.WriteFile(snatFile, buff.Bytes(), 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
-

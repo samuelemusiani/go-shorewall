@@ -19,8 +19,8 @@ var (
 	ErrZoneNotFound      = errors.New("zone not found")
 )
 
-func GetZones() ([]Zone, error) {
-	buff, err := os.ReadFile(zonesFile)
+func Zones() ([]Zone, error) {
+	buff, err := os.ReadFile(fullZonesFile)
 	if err != nil {
 		return nil, err
 	}
@@ -28,11 +28,11 @@ func GetZones() ([]Zone, error) {
 }
 
 func AddZone(zone Zone) error {
-	return readWriteFile(zonesFile, addZoneBuff, zone)
+	return readWriteFile(fullZonesFile, addZoneBuff, zone)
 }
 
 func RemoveZone(zoneName string) error {
-	return readWriteFile(zonesFile, removeZoneBuff, zoneName)
+	return readWriteFile(fullZonesFile, removeZoneBuff, zoneName)
 }
 
 func getZonesBuff(buff []byte) ([]Zone, error) {

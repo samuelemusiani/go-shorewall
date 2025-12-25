@@ -5,15 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"path"
 )
 
 const (
 	shorewallConfigPath = "/etc/shorewall"
-	zonesFile           = shorewallConfigPath + "/zones"
-	interfacesFile      = shorewallConfigPath + "/interfaces"
-	policyFile          = shorewallConfigPath + "/policy"
-	rulesFile           = shorewallConfigPath + "/rules"
-	snatFile            = shorewallConfigPath + "/snat"
+
+	zonesFile      = "zones"
+	interfacesFile = "interfaces"
+	policyFile     = "policy"
+	rulesFile      = "rules"
+	snatFile       = "snat"
+)
+
+var (
+	fullZonesFile      = path.Join(shorewallConfigPath, zonesFile)
+	fullInterfacesFile = path.Join(shorewallConfigPath, interfacesFile)
+	fullPolicyFile     = path.Join(shorewallConfigPath, policyFile)
+	fullRulesFile      = path.Join(shorewallConfigPath, rulesFile)
+	fullSnatFile       = path.Join(shorewallConfigPath, snatFile)
 )
 
 func executeCommand(command string, args ...string) (string, string, error) {
@@ -26,7 +36,7 @@ func executeCommand(command string, args ...string) (string, string, error) {
 	return stdout.String(), stderr.String(), err
 }
 
-func GetVersion() (string, error) {
+func Version() (string, error) {
 	stdout, stderr, err := executeCommand("/usr/sbin/shorewall", "version")
 	if err != nil {
 		err = errors.Join(fmt.Errorf("failed to execute shorewall version command: %w", err), errors.New(stderr))

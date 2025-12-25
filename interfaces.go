@@ -35,8 +35,8 @@ func (i Interface) Format() string {
 	return fmt.Sprintf("%s\t%s", i.Zone, i.Name)
 }
 
-func GetInterfaces() ([]Interface, error) {
-	buff, err := os.ReadFile(interfacesFile)
+func Interfaces() ([]Interface, error) {
+	buff, err := os.ReadFile(fullInterfacesFile)
 	if err != nil {
 		return nil, err
 	}
@@ -44,11 +44,11 @@ func GetInterfaces() ([]Interface, error) {
 }
 
 func AddInterface(iface Interface) error {
-	return readWriteFile(interfacesFile, addInterfaceBuff, iface)
+	return readWriteFile(fullInterfacesFile, addInterfaceBuff, iface)
 }
 
 func RemoveInterfaceByZone(zone string) error {
-	return readWriteFile(interfacesFile, removeInterfaceByZoneBuff, zone)
+	return readWriteFile(fullInterfacesFile, removeInterfaceByZoneBuff, zone)
 }
 
 func getInterfacesBuff(buff []byte) ([]Interface, error) {

@@ -39,8 +39,8 @@ func (p Policy) Format() string {
 	return fmt.Sprintf("%s\t%s\t%s\t%s", p.Source, p.Destination, p.Policy, p.Log)
 }
 
-func GetPolicies() ([]Policy, error) {
-	buff, err := os.ReadFile(policyFile)
+func Policies() ([]Policy, error) {
+	buff, err := os.ReadFile(fullPolicyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func GetPolicies() ([]Policy, error) {
 }
 
 func AddPolicy(policy Policy) error {
-	return readWriteFile(policyFile, addPolicyBuff, policy)
+	return readWriteFile(fullPolicyFile, addPolicyBuff, policy)
 }
 
 func getPoliciesBuff(buff []byte) ([]Policy, error) {
@@ -56,7 +56,7 @@ func getPoliciesBuff(buff []byte) ([]Policy, error) {
 }
 
 func RemovePolicy(policy Policy) error {
-	return readWriteFile(policyFile, removePolicyBuff, policy)
+	return readWriteFile(fullPolicyFile, removePolicyBuff, policy)
 }
 
 func addPolicyBuff(buff []byte, policy Policy) ([]byte, error) {

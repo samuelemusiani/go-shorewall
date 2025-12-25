@@ -38,8 +38,8 @@ func (s Snat) Format() string {
 	return fmt.Sprintf("%s\t%s\t%s", s.Action, s.Source, s.Destination)
 }
 
-func GetSnats() ([]Snat, error) {
-	buff, err := os.ReadFile(snatFile)
+func Snats() ([]Snat, error) {
+	buff, err := os.ReadFile(fullSnatFile)
 	if err != nil {
 		return nil, err
 	}
@@ -47,11 +47,11 @@ func GetSnats() ([]Snat, error) {
 }
 
 func AddSnat(snat Snat) error {
-	return readWriteFile(snatFile, addSnatBuff, snat)
+	return readWriteFile(fullSnatFile, addSnatBuff, snat)
 }
 
 func RemoveSnat(snat Snat) error {
-	return readWriteFile(snatFile, removeSnatBuff, snat)
+	return readWriteFile(fullSnatFile, removeSnatBuff, snat)
 }
 
 func getSnatsBuff(buff []byte) ([]Snat, error) {

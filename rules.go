@@ -56,8 +56,8 @@ func (r Rule) Format() string {
 	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s", r.Action, r.Source, r.Destination, r.Protocol, r.Dport, r.Sport, r.Origdest)
 }
 
-func GetRules() ([]Rule, error) {
-	buff, err := os.ReadFile(rulesFile)
+func Rules() ([]Rule, error) {
+	buff, err := os.ReadFile(fullRulesFile)
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +65,11 @@ func GetRules() ([]Rule, error) {
 }
 
 func AddRule(rule Rule) error {
-	return readWriteFile(rulesFile, addRuleBuff, rule)
+	return readWriteFile(fullRulesFile, addRuleBuff, rule)
 }
 
 func RemoveRule(rule Rule) error {
-	return readWriteFile(rulesFile, removeRuleBuff, rule)
+	return readWriteFile(fullRulesFile, removeRuleBuff, rule)
 }
 
 func getRulesBuff(buff []byte) ([]Rule, error) {

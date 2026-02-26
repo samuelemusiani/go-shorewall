@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// var lockDirPath = "/etc/shorewall/.goshorewall"
 var lockDirPath = "/tmp/tsh/.goshorewall"
 
 // App represents a single application that can manage Shorewall configurations.
@@ -51,6 +50,18 @@ func AppFromID(id string) (*App, error) {
 		return nil, fmt.Errorf("failed to parse application identifier: %w", err)
 	}
 	return &App{
+		basePath:   shorewallConfigPath,
+		identifier: parsedID,
+	}, nil
+}
+
+func AppFromIDAndBasePath(id, basePath string) (*App, error) {
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse application identifier: %w", err)
+	}
+	return &App{
+		basePath:   basePath,
 		identifier: parsedID,
 	}, nil
 }
@@ -102,77 +113,77 @@ func (a *App) Version() (string, error) {
 
 // Interfaces returns the list of interfaces managed by the App instance.
 func (a *App) Interfaces() ([]Interface, error) {
-	return execGetWithLock("interfaces", a.ID(), interfacesFile, getInterfacesBuff)
+	return execGetWithLock("interfaces", a.ID(), a.InterfaceFilePath(), getInterfacesBuff)
 }
 
 // AddInterface adds a new interface to the Shorewall configuration managed by the App instance.
 func (a *App) AddInterface(iface Interface) error {
-	return execAddRemoveWithLock("interfaces", a.ID(), interfacesFile, addInterfaceBuff, iface)
+	return execAddRemoveWithLock("interfaces", a.ID(), a.InterfaceFilePath(), addInterfaceBuff, iface)
 }
 
 // RemoveInterfaceByZone removes all interfaces associated with the specified zone
 func (a *App) RemoveInterfaceByZone(zone string) error {
-	return execAddRemoveWithLock("interfaces", a.ID(), interfacesFile, removeInterfaceByZoneBuff, zone)
+	return execAddRemoveWithLock("interfaces", a.ID(), a.InterfaceFilePath(), removeInterfaceByZoneBuff, zone)
 }
 
 // Policies returns the list of policies managed by the App instance.
 func (a *App) Policies() ([]Policy, error) {
-	return execGetWithLock("policies", a.ID(), policyFile, getPoliciesBuff)
+	return execGetWithLock("policies", a.ID(), a.PolicyFilePath(), getPoliciesBuff)
 }
 
 // AddPolicy adds a new policy to the Shorewall configuration managed by the App instance.
 func (a *App) AddPolicy(policy Policy) error {
-	return execAddRemoveWithLock("policies", a.ID(), policyFile, addPolicyBuff, policy)
+	return execAddRemoveWithLock("policies", a.ID(), a.PolicyFilePath(), addPolicyBuff, policy)
 }
 
 // RemovePolicy removes a policy from the Shorewall configuration managed by the App instance.
 func (a *App) RemovePolicy(policy Policy) error {
-	return execAddRemoveWithLock("policies", a.ID(), policyFile, removePolicyBuff, policy)
+	return execAddRemoveWithLock("policies", a.ID(), a.PolicyFilePath(), removePolicyBuff, policy)
 }
 
 // Rules returns the list of rules managed by the App instance.
 func (a *App) Rules() ([]Rule, error) {
-	return execGetWithLock("rules", a.ID(), rulesFile, getRulesBuff)
+	return execGetWithLock("rules", a.ID(), a.RulesFilePath(), getRulesBuff)
 }
 
 // AddRule adds a new rule to the Shorewall configuration managed by the App instance.
 func (a *App) AddRule(rule Rule) error {
-	return execAddRemoveWithLock("rules", a.ID(), rulesFile, addRuleBuff, rule)
+	return execAddRemoveWithLock("rules", a.ID(), a.RulesFilePath(), addRuleBuff, rule)
 }
 
 // RemoveRule removes a rule from the Shorewall configuration managed by the App instance.
 func (a *App) RemoveRule(rule Rule) error {
-	return execAddRemoveWithLock("rules", a.ID(), rulesFile, removeRuleBuff, rule)
+	return execAddRemoveWithLock("rules", a.ID(), a.RulesFilePath(), removeRuleBuff, rule)
 }
 
 // Snats returns the list of SNATs managed by the App instance.
 func (a *App) Snats() ([]Snat, error) {
-	return execGetWithLock("snats", a.ID(), snatFile, getSnatsBuff)
+	return execGetWithLock("snats", a.ID(), a.SnatFilePath(), getSnatsBuff)
 }
 
 // AddSnat adds a new SNAT to the Shorewall configuration managed by the App instance.
 func (a *App) AddSnat(snat Snat) error {
-	return execAddRemoveWithLock("snats", a.ID(), snatFile, addSnatBuff, snat)
+	return execAddRemoveWithLock("snats", a.ID(), a.SnatFilePath(), addSnatBuff, snat)
 }
 
 // RemoveSnat removes a SNAT from the Shorewall configuration managed by the App instance.
 func (a *App) RemoveSnat(snat Snat) error {
-	return execAddRemoveWithLock("snats", a.ID(), snatFile, removeSnatBuff, snat)
+	return execAddRemoveWithLock("snats", a.ID(), a.SnatFilePath(), removeSnatBuff, snat)
 }
 
 // Zones returns the list of zones managed by the App instance.
 func (a *App) Zones() ([]Zone, error) {
-	return execGetWithLock("zones", a.ID(), zonesFile, getZonesBuff)
+	return execGetWithLock("zones", a.ID(), a.ZonesFilePath(), getZonesBuff)
 }
 
 // AddZone adds a new zone to the Shorewall configuration managed by the App instance.
 func (a *App) AddZone(zone Zone) error {
-	return execAddRemoveWithLock("zones", a.ID(), zonesFile, addZoneBuff, zone)
+	return execAddRemoveWithLock("zones", a.ID(), a.ZonesFilePath(), addZoneBuff, zone)
 }
 
 // RemoveZone removes a zone from the Shorewall configuration managed by the App instance.
 func (a *App) RemoveZone(zoneName string) error {
-	return execAddRemoveWithLock("zones", a.ID(), zonesFile, removeZoneBuff, zoneName)
+	return execAddRemoveWithLock("zones", a.ID(), a.ZonesFilePath(), removeZoneBuff, zoneName)
 }
 
 func execWithLock(component string, fn func() error) error {

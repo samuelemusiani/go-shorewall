@@ -226,7 +226,7 @@ func execAddRemoveWithLock[S any](component, id, path string, fn func([]byte, S)
 }
 
 func takeLock(component string) (*flock.Flock, error) {
-	err := os.Mkdir(lockDirPath, 0o755)
+	err := os.MkdirAll(lockDirPath, 0o750)
 	if err != nil && !os.IsExist(err) {
 		return nil, fmt.Errorf("failed to create lock directory: %w", err)
 	}
